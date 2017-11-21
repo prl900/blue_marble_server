@@ -9,6 +9,8 @@ import (
 	"unsafe"
 )
 
+// Requires loading netcdf4 library
+// module load netcdf/4.3.3.1
 
 func main() {
 	ncid := C.int(0)
