@@ -5,19 +5,34 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"io"
+	"net/http"
 	"os"
+	"regexp"
+	"strconv"
 
 	// Imports the Google Cloud Storage client package.
 	"cloud.google.com/go/storage"
-	"golang.org/x/net/context"
 	"github.com/golang/snappy"
+	"golang.org/x/net/context"
 )
 
 const (
+	re        = `world.topo.bathy.2004(?P<month>\d\d).3x21600x21600.(?P<letter>[A|B|C|D])(?P<number>[1-4]).png`
+	url       = "https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/"
 	rootPath  = "/Users/pablo/Downloads/"
 	tileSize  = 1200
 	imageSize = 21600
 )
+
+var TileNames [8]string = [8]string{"world.topo.bathy.200412.3x21600x21600.A1.png",
+	"world.topo.bathy.200412.3x21600x21600.A2.png",
+	"world.topo.bathy.200412.3x21600x21600.B1.png",
+	"world.topo.bathy.200412.3x21600x21600.B2.png",
+	"world.topo.bathy.200412.3x21600x21600.C1.png",
+	"world.topo.bathy.200412.3x21600x21600.C2.png",
+	"world.topo.bathy.200412.3x21600x21600.D1.png",
+	"world.topo.bathy.200412.3x21600x21600.D2.png"}
 
 var letters map[string]int = map[string]int{"A": 0, "B": 1, "C": 2, "D": 3}
 var channels map[int]string = map[int]string{0: "R", 1: "G", 2: "B"}
@@ -111,12 +126,63 @@ func WriteObject(bktName, objName string, contents []byte) error {
 	return nil
 }
 
-func TileImage(month int, letter string, number int, bktName string) {
-	fName := GetFileName(month, letter, number)
-	img, err := ReadPNGImage(rootPath + fName)
+func ParseFilename(fileName string) (int, string, int, error) {
+	contains := regexp.MustCompile(re)
+	match := contains.FindStringSubmatch(fileName)
+
+	month, err := strconv.ParseInt(match[1], 10, 64)
+	if err != nil {
+		return 0, "", 0, err
+	}
+
+	number, err := strconv.ParseInt(match[3], 10, 64)
+	if err != nil {
+		return 0, "", 0, err
+	}
+
+	return int(month), match[2], int(number), nil
+}
+
+func DownloadTile(fName string) error {
+	if _, err := os.Stat(fName); !os.IsNotExist(err) {
+		return nil
+	}
+
+	out, err := os.Create(fName)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	resp, err := http.Get(url + fName)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	_, err = io.Copy(out, resp.Body)
+
+	return err
+}
+
+func TileImage(fName string, bktName string) {
+	err := DownloadTile(fName)
 	if err != nil {
 		panic(err)
 	}
+
+	month, letter, number, err := ParseFilename(fName)
+	if err != nil {
+		panic(err)
+	}
+
+	//fName := GetFileName(month, letter, number)
+	img, err := ReadPNGImage(fName)
+	if err != nil {
+		panic(err)
+	}
+
+	return
 
 	chans := SeparateChannels(img)
 	offSets := GetTileOffsets(letter, number)
@@ -138,12 +204,7 @@ func TileImage(month int, letter string, number int, bktName string) {
 }
 
 func main() {
-	//TileImage(12, "A", 1, "blue_marble")
-	//TileImage(12, "A", 2, "blue_marble")
-	TileImage(12, "B", 1, "blue_marble")
-	TileImage(12, "B", 2, "blue_marble")
-	TileImage(12, "C", 1, "blue_marble")
-	TileImage(12, "C", 2, "blue_marble")
-	TileImage(12, "D", 1, "blue_marble")
-	TileImage(12, "D", 2, "blue_marble")
+	for _, fName := range TileNames {
+		TileImage(fName, "blue_marble")
+	}
 }
