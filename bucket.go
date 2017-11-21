@@ -92,8 +92,9 @@ func SeparateChannels(rgba *image.RGBA) []*Tile {
 	return []*Tile{t1, t2, t3}
 }
 
-func WriteObject(destPath, objName string, contents []byte) error {
-	fileName := filepath.Join(destPath, objName)
+func WriteObject(pathName, objName string, contents []byte) error {
+	fileName := filepath.Join(pathName, objName)
+	fmt.Println(fileName)
 	return ioutil.WriteFile(fileName, contents, 0644)
 }
 
@@ -152,8 +153,6 @@ func TileImage(fName string, bktName string) {
 	if err != nil {
 		panic(err)
 	}
-
-	return
 
 	chans := SeparateChannels(img)
 	offSets := GetTileOffsets(letter, number)
