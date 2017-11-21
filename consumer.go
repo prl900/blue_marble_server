@@ -7,15 +7,13 @@ import (
 	"image/png"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
-	// Imports the Google Cloud Storage client package.
-	"cloud.google.com/go/storage"
 	"github.com/golang/snappy"
-	"golang.org/x/net/context"
 )
 
 const (
-	rootPath  = "/Users/pablo/Downloads/"
+	rootPath  = "/g/data3/fr5/blue_marble_server/data/"
 	tileSize  = 1200
 	imageSize = 21600
 )
@@ -82,30 +80,11 @@ func GetMosaic(latMin, latMax, lonMin, lonMax float64) Mosaic {
 	return out
 }
 
-func ReadObject(bktName, objName string) ([]byte, error) {
-	ctx := context.Background()
-
-	// Sets your Google Cloud Platform project ID.
-	//projectID := "YOUR_PROJECT_ID"
-	//projectID := "nci-gce"
-
-	// Creates a client.
-	client, err := storage.NewClient(ctx)
+func ReadObject(pathName, objName string) ([]byte, error) {
+	fileName := filepath.Join(pathName, objName)
+	compData, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		return []byte{}, fmt.Errorf("Failed to create client: %v", err)
-	}
-
-	// Creates a Bucket instance.
-	bucket := client.Bucket(bktName)
-	rc, err := bucket.Object(objName).NewReader(ctx)
-	if err != nil {
-		return []byte{}, fmt.Errorf("Failed creating reader: %v", err)
-	}
-
-	compData, err := ioutil.ReadAll(rc)
-	rc.Close()
-	if err != nil {
-		return []byte{}, fmt.Errorf("Failed reading object: %v", err)
+		return []byte{}, fmt.Errorf("Failed reading file: %v", err)
 	}
 
 	imgData, err := snappy.Decode(nil, compData)
@@ -113,17 +92,10 @@ func ReadObject(bktName, objName string) ([]byte, error) {
 		return []byte{}, fmt.Errorf("Failed decompressing data: %v", err)
 	}
 
-	// Close the client when finished.
-	if err := client.Close(); err != nil {
-		return []byte{}, fmt.Errorf("Failed to close client: %v", err)
-	}
-
 	return imgData, nil
 }
 
 func StitchMosaic(m Mosaic) *image.Gray {
-	fmt.Println(m)
-
 	out := &image.Gray{Pix: []byte{}, Stride: m.Shape[0], Rect: image.Rect(0, 0, m.Shape[0], m.Shape[1])}
 
 	rows := len(m.Tiles) / m.TileStride
@@ -131,7 +103,7 @@ func StitchMosaic(m Mosaic) *image.Gray {
 	for i := 0; i < rows; i++ {
 		tiles := []Tile{}
 		for _, tileRef := range m.Tiles[i*m.TileStride : (i+1)*m.TileStride] {
-			data, err := ReadObject("blue_marble", tileRef.Path)
+			data, err := ReadObject(rootPath, tileRef.Path)
 			if err != nil {
 				panic(err)
 			}

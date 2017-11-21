@@ -9,16 +9,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
-	"path/filepath"
-	
+
 	"github.com/golang/snappy"
 )
 
 const (
-	re        = `world.topo.bathy.2004(?P<month>\d\d).3x21600x21600.(?P<letter>[A|B|C|D])(?P<number>[1-4]).png`
-	url       = "https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/"
+	re  = `world.topo.bathy.2004(?P<month>\d\d).3x21600x21600.(?P<letter>[A|B|C|D])(?P<number>[1-4]).png`
+	url = "https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/"
 	//rootPath  = "/Users/pablo/Downloads/"
 	tileSize  = 1200
 	imageSize = 21600
