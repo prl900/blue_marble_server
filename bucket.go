@@ -6,21 +6,20 @@ import (
 	"image"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
-
-	// Imports the Google Cloud Storage client package.
-	"cloud.google.com/go/storage"
+	"path/filepath"
+	
 	"github.com/golang/snappy"
-	"golang.org/x/net/context"
 )
 
 const (
 	re        = `world.topo.bathy.2004(?P<month>\d\d).3x21600x21600.(?P<letter>[A|B|C|D])(?P<number>[1-4]).png`
 	url       = "https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/"
-	rootPath  = "/Users/pablo/Downloads/"
+	//rootPath  = "/Users/pablo/Downloads/"
 	tileSize  = 1200
 	imageSize = 21600
 )
@@ -93,37 +92,9 @@ func SeparateChannels(rgba *image.RGBA) []*Tile {
 	return []*Tile{t1, t2, t3}
 }
 
-func WriteObject(bktName, objName string, contents []byte) error {
-	ctx := context.Background()
-
-	// Sets your Google Cloud Platform project ID.
-	//projectID := "YOUR_PROJECT_ID"
-	//projectID := "nci-gce"
-
-	// Creates a client.
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return fmt.Errorf("Failed to create client: %v", err)
-	}
-
-	// Creates a Bucket instance.
-	bucket := client.Bucket(bktName)
-	w := bucket.Object(objName).NewWriter(ctx)
-	w.ContentType = "application/octet-stream"
-
-	if _, err := w.Write([]byte(contents)); err != nil {
-		return fmt.Errorf("Failed to write object to bucket: %v", err)
-	}
-
-	if err := w.Close(); err != nil {
-		return fmt.Errorf("Failed to close writer to bucket: %v", err)
-	}
-	// Close the client when finished.
-	if err := client.Close(); err != nil {
-		return fmt.Errorf("Failed to close client: %v", err)
-	}
-
-	return nil
+func WriteObject(destPath, objName string, contents []byte) error {
+	fileName := filepath.Join(destPath, objName)
+	return ioutil.WriteFile(fileName, contents, 0644)
 }
 
 func ParseFilename(fileName string) (int, string, int, error) {
@@ -205,6 +176,7 @@ func TileImage(fName string, bktName string) {
 
 func main() {
 	for _, fName := range TileNames {
-		TileImage(fName, "blue_marble")
+		TileImage(fName, "/g/data3/fr5/blue_marble_server/data")
+		fmt.Println("Done", fName)
 	}
 }
